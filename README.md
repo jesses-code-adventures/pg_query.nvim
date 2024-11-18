@@ -2,11 +2,32 @@
 
 neovim wrapper for [pg_query_utils](https://github.com/timwmillard/pg_query_utils.git).
 
-## dev
+## prerequisites
 
-run `make init` to install the `pg_query_utils` dev tools.
+If you're planning to clone this repo, you should start there and run `make init` to download and install `pg_query_utils`.
 
-use the following `plugins/pg_query.lua` in your Lazy config to set up locally.
+If not, you'll need to install [pg_query_utils](https://github.com/timwmillard/pg_query_utils.git) yourself and ensure that `pg_query_prepare` is available in your PATH.
+
+## installation
+
+### lazy
+
+```lua
+--- vim.fn.stdpath("config")/lua/plugins/pg_query.lua
+return {
+    {
+        "jesses-code-adventures/pg_query.nvim",
+        keys = {
+            { "<leader>wq", function() require("pg_query").write(); end, mode = "n", desc = "Write postgres query" },
+        },
+        config = function()
+            require("pg_query").setup()
+        end
+    }
+}
+```
+
+## dev installation
 
 ```lua
 local dev = true
