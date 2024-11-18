@@ -1,3 +1,24 @@
+---@param value string 
+---@return string
+local function trim(s)
+  if not s then
+    return s
+  end
+  return (s:gsub("^%s+", ""):gsub("%s+$", ""))
+end
+
+---@param value string
+---@param delim string
+---@return string[]
+local function split(value, delim)
+  local parts = {}
+  local pattern = "([^" .. delim .. "]+)"
+  for part in value:gmatch(pattern) do
+      table.insert(parts, part)
+  end
+  return parts
+end
+
 --- @param binary_name string
 local function ensure_binary_available(binary_name)
     local handle = io.popen("which " .. binary_name)
@@ -71,13 +92,10 @@ local function getSqlEndCoord(lines, cursor)
         row = row + 1
         col = 1
     end
-
     return { row = #lines, col = #lines[#lines] } -- default to end of file if no semicolon is found
 end
 
-local M = {}
-
-function M.get_nearest_sql_command()
+local function get_nearest_sql_command()
   local cursor_row = vim.api.nvim_win_get_cursor(0)[1]
   local cursor_col = vim.api.nvim_win_get_cursor(0)[2] + 1
   local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
@@ -87,13 +105,58 @@ function M.get_nearest_sql_command()
   for i = start_coord.row, end_coord.row do
     table.insert(relevant_lines, lines[i])
   end
-  return table.concat(relevant_lines, "\n"):match("^%s*(.-)%s*$")
+  return trim(table.concat(relevant_lines, "\n"))
 end
 
-function M.setup(opts) 
+---@class QueryParam
+---@field index integer
+---@field field string 
+
+---@class QueryDetails
+---@field fingerprint string
+---@field params QueryParam[]
+
+---@param query string
+---@return QueryDetails
+local function parse_query_details(query)
+  local handle = io.popen("echo '" .. query .. "' | pg_query_prepare --details")
+  if not handle then
+    error("failed to get io handle in pg_query.write()")
+  end
+  local result = handle:read("*a")
+  handle:close()
+  local parts = split(result, " ")
+  if #parts == 0 then
+    error("invalid query: " .. result)
+  end
+  if #parts == 1 then
+    return { fingerprint = trim(split(parts[1], "=")[2]), params = {} }
+  end
+  local fingerprint = trim(split(parts[1], "=")[2])
+  local params_str = trim(split(parts[2], "=")[2])
+  local param_parts = split(params_str, ",")
+  local params = {}
+  for _, param in ipairs(param_parts) do
+    local ps = split(param, ":")
+    local index = ps[1]
+    local value = trim(ps[2]) or nil
+    table.insert(params, {index=index, field=value})
+  end
+  return { fingerprint = fingerprint, params = params }
+end
+
+
+local M = {}
+
+function M.write()
+  local query = get_nearest_sql_command()
+  local details = parse_query_details(query)
+  print(vim.inspect(details))
+end
+
+function M.setup(opts)
     opts = opts or {}
     init()
 end
 
 return M
-
