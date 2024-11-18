@@ -45,6 +45,9 @@ return {
         dev = dev,
         enabled = true,
         lazy = false,
+        keys = {
+            { "<leader>wq", function() require("pg_query").write(); end, mode = "n", desc = "Write postgres query" },
+        },
         config = function()
             require("pg_query").setup()
         end
