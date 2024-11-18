@@ -33,6 +33,7 @@ return {
 
 ### todo
 
-- [ ] cache queries as fingerprints in XDG_HOME (`vim.fn.stdpath("data")`) with their default values.
+- [x] cache queries as fingerprints in XDG_HOME (`vim.fn.stdpath("data")`) with their default values.
+- [ ] find better way than caching by fingerprint name, as the fingerprints are too volatile to use as keys.
 - [ ] have a Write command that allows you to update the default values. Should be done with a floating window.
 - [ ] have a Run command that allows you to execute the query with the fingerprint below the cursor, with its default values.
