@@ -30,12 +30,16 @@ git clone --recurse-submodules --depth 1 https://github.com/timwmillard/pg_query
 return {
     {
         "jesses-code-adventures/pg_query.nvim",
+        name = "pg_query",
+        config = function()
+            require("pg_query").setup()
+        end,
         keys = {
             { "<leader>wq", function() require("pg_query").write(); end, mode = "n", desc = "Write postgres query" },
         },
-        config = function()
-            require("pg_query").setup()
-        end
+        dependencies = {
+            "lunarmodules/luafilesystem",
+        }
     }
 }
 ```
@@ -54,16 +58,19 @@ return {
     {
         "jesses-code-adventures/pg_query.nvim",
         name = "pg_query",
-        dir = dev and path or nil,
+        config = function()
+            require("pg_query").setup()
+        end,
+        dependencies = {
+            "lunarmodules/luafilesystem",
+        },
         dev = dev,
+        dir = dev and path or nil,
         enabled = true,
         lazy = false,
         keys = {
             { "<leader>wq", function() require("pg_query").write(); end, mode = "n", desc = "Write postgres query" },
-        },
-        config = function()
-            require("pg_query").setup()
-        end
+        }
     }
 }
 ```

@@ -1,6 +1,6 @@
 local lfs = require("lfs")
----
----@param value string 
+
+---@param s string 
 ---@return string
 local function trim(s)
   if not s then
@@ -76,7 +76,7 @@ local function getSqlStartCoord(lines, cursor)
     end
     return { row = 1, col = 0 } -- default to start of file if no semicolon is found
 end
----
+
 ---@param lines string[]
 ---@param cursor FilePoint
 ---@return FilePoint
@@ -97,6 +97,7 @@ local function getSqlEndCoord(lines, cursor)
     return { row = #lines, col = #lines[#lines] } -- default to end of file if no semicolon is found
 end
 
+---@return string
 local function get_nearest_sql_command()
   local cursor_row = vim.api.nvim_win_get_cursor(0)[1]
   local cursor_col = vim.api.nvim_win_get_cursor(0)[2] + 1
@@ -149,6 +150,7 @@ local function parse_query_details(query)
 end
 
 
+---@param query_details QueryDetails
 local function save_query_details(query_details)
   if #query_details.params == 0 then
       return
