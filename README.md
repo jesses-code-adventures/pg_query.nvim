@@ -1,6 +1,6 @@
-# pg_query_utils.nvim
+# pg_query.nvim
 
-neovim wrapper for pg_query_utils.
+neovim wrapper for [pg_query_utils](https://github.com/timwmillard/pg_query_utils.git).
 
 ## dev
 
@@ -37,3 +37,5 @@ return {
 - [ ] find better way than caching by fingerprint name, as the fingerprints are too volatile to use as keys.
 - [ ] have a Write command that allows you to update the default values. Should be done with a floating window.
 - [ ] have a Run command that allows you to execute the query with the fingerprint below the cursor, with its default values.
+- [ ] ability to execute the command in a tmux window called pg_query and run using psql/nice pager.
+- [ ] ability to execute the command in a new nvim split like dadbod, maybe even just using dadbod.
