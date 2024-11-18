@@ -1,4 +1,4 @@
-.PHONY: pre-reqs
+.PHONY: pre-reqs init
 
 pre-reqs:
 	@if ! command -v pg_query_prepare >/dev/null 2>&1; then \
