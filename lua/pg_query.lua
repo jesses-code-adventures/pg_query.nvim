@@ -1,3 +1,5 @@
+local lfs = require("lfs")
+---
 ---@param value string 
 ---@return string
 local function trim(s)
@@ -111,6 +113,7 @@ end
 ---@class QueryParam
 ---@field index integer
 ---@field field string 
+---@field value any | nil
 
 ---@class QueryDetails
 ---@field fingerprint string
@@ -146,12 +149,36 @@ local function parse_query_details(query)
 end
 
 
+local function save_query_details(query_details)
+  if #query_details.params == 0 then
+      return
+  end
+  local data_path = vim.fn.stdpath("data") .. "/pg_query/"
+  if lfs.attributes(data_path, "mode") ~= "directory" then
+      local success, err = lfs.mkdir(data_path)
+      if not success then
+          error("Could not create directory: " .. err)
+      end
+  end
+  local file_path = data_path .. query_details.fingerprint
+  local file = io.open(file_path, "w")
+  if not file then
+    error("Failed to open file for writing: " .. file_path)
+  end
+  for _, param in ipairs(query_details.params) do
+    local line = string.format("%s,%s,%s", param.index, param.field, param.value or "")
+    file:write(line .. "\n")
+  end
+  file:close()
+  print("saved query details to " .. file_path)
+end
+
 local M = {}
 
 function M.write()
   local query = get_nearest_sql_command()
   local details = parse_query_details(query)
-  print(vim.inspect(details))
+  save_query_details(details)
 end
 
 function M.setup(opts)
