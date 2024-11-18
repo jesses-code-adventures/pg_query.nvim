@@ -6,7 +6,20 @@ neovim wrapper for [pg_query_utils](https://github.com/timwmillard/pg_query_util
 
 If you're planning to clone this repo, you should start there and run `make init` to download and install `pg_query_utils`.
 
-If not, you'll need to install [pg_query_utils](https://github.com/timwmillard/pg_query_utils.git) yourself and ensure that `pg_query_prepare` is available in your PATH.
+If not, you'll need to install [pg_query_utils](https://github.com/timwmillard/pg_query_utils.git) yourself and ensure that `pg_query_prepare` is available in your PATH. Currently, using this script handles the installation process for you.
+
+```bash
+git clone --recurse-submodules --depth 1 https://github.com/timwmillard/pg_query_utils.git && \
+    cd pg_query_utils && \
+    sed -i '' '/^all:/s/pg_describe_query.*//;' Makefile && \
+    make && \
+    mkdir -p "$$HOME/.local/bin" && \
+    cp pg_query_prepare "$$HOME/.local/bin" && \
+    cp pg_query_json "$$HOME/.local/bin" && \
+    cp pg_query_fingerprint "$$HOME/.local/bin" && \
+    cd .. && \
+    rm -rf pg_query_utils;
+```
 
 ## installation
 
