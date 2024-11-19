@@ -19,33 +19,65 @@ local function split(value, delim)
     return parts
 end
 
---- @param binary_name string
-local function ensure_binary_available(binary_name)
-    local handle = io.popen("which " .. binary_name)
-    if not handle then
-        error("Failed to get handle for binary: " .. binary_name)
-        return false
+---@param file_path string
+---@param mode string?
+---@return file*
+local function open_or_error(file_path, mode)
+    local file = io.open(file_path, mode)
+    if not file then
+        error("Failed to open file for writing: " .. file_path)
     end
-    local result = handle:read("*a")
-    handle:close()
-    if result == "" then
-        print(binary_name .. " is not installed.")
-        return false
+    return file
+end
+
+---@return string
+local function temp_dir() 
+    return vim.fn.stdpath("data") .. "/pg_query/"
+end
+
+---@param label string
+---@return string
+local function get_query_temp_path(label)
+    return temp_dir() .. label
+end
+
+
+---@param command string
+---@param mode string?
+---@return boolean, string|"exit"|"signal"?
+local function run_command(command, mode)
+    local handle = io.popen(command, mode)
+    if handle then
+        local result = handle:read("*a")
+        local success, reason, exit_code = handle:close()
+        if success then
+            return true, result
+        else
+            print("Command failed: " .. (reason or "unknown") .. "\nexit code: " .. exit_code)
+            return false, reason
+        end
     else
-        return true
+        print("Failed to start command " .. command)
+        return false, nil
     end
 end
 
+--- @param binary_name string
+local function ensure_binary_available(binary_name)
+    local success, _ = run_command("which ".. binary_name)
+    if not success then
+        error(binary_name .. " not available, install " .. " or add it to your PATH")
+    end
+    return success
+end
+
 local function init()
-    -- don't currently need these
-    -- if not ensure_binary_available("pg_query_fingerprint") then
-    --     return
-    -- end
-    -- if not ensure_binary_available("pg_query_json") then
-    --     return
-    -- end
     if not ensure_binary_available("pg_query_prepare") then
         return
+    end
+    local success, msg = run_command("mkdir -p " .. temp_dir())
+    if not success then
+        error("Could not create pg_query temp_dir: " .. msg)
     end
 end
 
@@ -148,39 +180,13 @@ local function parse_query_details(query)
     return { label = label, params = params }
 end
 
----@param command string
----@param mode string?
----@return boolean, string|"exit"|"signal"?
-local function run_command(command, mode)
-    local handle = io.popen(command, mode)
-    if handle then
-        local result = handle:read("*a")
-        local success, reason, exit_code = handle:close() -- check for success
-        if success then
-            return true, result
-        else
-            print("Command failed: " .. (reason or "unknown") .. "\nexit code: " .. exit_code)
-            return false, reason
-        end
-    else
-        print("Failed to start command " .. command)
-        return false, nil
-    end
-end
-
-
 ---@param query_details QueryDetails
 local function save_query_details(query_details)
     if #query_details.params == 0 then
         return
     end
-    local data_path = vim.fn.stdpath("data") .. "/pg_query/"
-    local success, _ = run_command("mkdir -p " .. data_path)
-    if not success then
-        error("Could not create directory: " .. success)
-    end
-    local file_path = data_path .. query_details.label
-    local file = io.open(file_path, "w")
+    local file_path = get_query_temp_path(query_details.label)
+    local file = open_or_error(file_path, "w")
     if not file then
         error("Failed to open file for writing: " .. file_path)
     end
@@ -190,6 +196,22 @@ local function save_query_details(query_details)
     end
     file:close()
     print("saved query details to " .. file_path)
+end
+
+---@param file_path string
+---@return QueryParam[]
+local function parse_query_param_values(file_path)
+    local file = open_or_error(file_path)
+    local params = {}
+    for line in file:lines() do
+        local parts = split(line, ",")
+        local index = parts[1]
+        local field = #parts > 1 and parts[2] or nil
+        local value = #parts > 2 and parts[3] or nil
+        table.insert(params, {index = index, field = field, value = value})
+    end
+    file:close()
+    return params
 end
 
 local M = {}
@@ -202,8 +224,11 @@ end
 
 function M.render()
     local query = get_nearest_sql_command()
-    local command = "echo \"" .. query .. '"' .. " | " .. M.output_cmd
-    run_command(command)
+    local label = parse_query_details(query).label
+    local params = parse_query_param_values(get_query_temp_path(label))
+    print("got params " .. vim.inspect(params))
+    -- local command = "echo \"" .. query .. '"' .. " | " .. M.output_cmd
+    -- run_command(command)
 end
 
 function M.setup(opts)
