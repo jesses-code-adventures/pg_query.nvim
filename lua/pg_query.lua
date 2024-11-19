@@ -2,7 +2,7 @@
 ---@return string
 local function trim(s)
     if not s then
-    return s
+        return s
     end
     return (s:gsub("^%s+", ""):gsub("%s+$", ""))
 end
@@ -23,8 +23,8 @@ end
 local function ensure_binary_available(binary_name)
     local handle = io.popen("which " .. binary_name)
     if not handle then
-      error("Failed to get handle for binary: " .. binary_name)
-      return false
+        error("Failed to get handle for binary: " .. binary_name)
+        return false
     end
     local result = handle:read("*a")
     handle:close()
@@ -105,7 +105,7 @@ local function get_nearest_sql_command()
     local end_coord = getSqlEndCoord(lines, { row = cursor_row, col = cursor_col })
     local relevant_lines = {}
     for i = start_coord.row, end_coord.row do
-    table.insert(relevant_lines, lines[i])
+        table.insert(relevant_lines, lines[i])
     end
     return trim(table.concat(relevant_lines, "\n"))
 end
@@ -124,26 +124,26 @@ end
 local function parse_query_details(query)
     local handle = io.popen("echo '" .. query .. "' | pg_query_prepare --details")
     if not handle then
-    error("failed to get io handle in pg_query.write()")
+        error("failed to get io handle in pg_query.write()")
     end
     local result = handle:read("*a")
     handle:close()
     local parts = split(result, " ")
     if #parts == 0 then
-    error("invalid query: " .. result)
+        error("invalid query: " .. result)
     end
     if #parts == 1 then
-    return { label = trim(split(parts[1], "=")[2]), params = {} }
+        return { label = trim(split(parts[1], "=")[2]), params = {} }
     end
     local label = trim(split(parts[1], "=")[2])
     local params_str = trim(split(parts[2], "=")[2])
     local param_parts = split(params_str, ",")
     local params = {}
     for _, param in ipairs(param_parts) do
-    local ps = split(param, ":")
-    local index = ps[1]
-    local value = trim(ps[2]) or nil
-    table.insert(params, {index=index, field=value})
+        local ps = split(param, ":")
+        local index = ps[1]
+        local value = trim(ps[2]) or nil
+        table.insert(params, {index=index, field=value})
     end
     return { label = label, params = params }
 end
@@ -172,21 +172,21 @@ end
 ---@param query_details QueryDetails
 local function save_query_details(query_details)
     if #query_details.params == 0 then
-      return
+        return
     end
     local data_path = vim.fn.stdpath("data") .. "/pg_query/"
     local success, _ = run_command("mkdir -p " .. data_path)
     if not success then
-      error("Could not create directory: " .. success)
+        error("Could not create directory: " .. success)
     end
     local file_path = data_path .. query_details.label
     local file = io.open(file_path, "w")
     if not file then
-    error("Failed to open file for writing: " .. file_path)
+        error("Failed to open file for writing: " .. file_path)
     end
     for _, param in ipairs(query_details.params) do
     local line = string.format("%s,%s,%s", param.index, param.field, param.value or "")
-    file:write(line .. "\n")
+        file:write(line .. "\n")
     end
     file:close()
     print("saved query details to " .. file_path)
@@ -200,8 +200,15 @@ function M.write()
     save_query_details(details)
 end
 
+function M.render()
+    local query = get_nearest_sql_command()
+    local command = "echo \"" .. query .. '"' .. " | " .. M.output_cmd
+    run_command(command)
+end
+
 function M.setup(opts)
     opts = opts or {}
+    M.output_cmd = opts.output_cmd or "pbcopy"
     init()
 end
 
