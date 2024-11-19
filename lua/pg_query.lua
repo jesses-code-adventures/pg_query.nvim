@@ -7,14 +7,25 @@ local function trim(s)
     return (s:gsub("^%s+", ""):gsub("%s+$", ""))
 end
 
+
 ---@param value string
 ---@param delim string
+---@param max_occurances number?
 ---@return string[]
-local function split(value, delim)
+local function split(value, delim, max_occurances)
     local parts = {}
     local pattern = "([^" .. delim .. "]+)"
-    for part in value:gmatch(pattern) do
+    local idx = 1
+    local matched = value:gmatch(pattern)
+    for part in matched do
       table.insert(parts, part)
+      idx = idx + 1
+      if max_occurances ~= nil and idx > max_occurances then
+          -- TODO: could be improved, will break on lists where multiple keys have the same value which shouldn't happen but who knows
+          local remaining = value:sub(value:find(part))
+          parts[max_occurances] = table.concat({parts[max_occurances], remaining}, delim)
+          return parts
+      end
     end
     return parts
 end
@@ -28,6 +39,18 @@ local function open_or_error(file_path, mode)
         error("Failed to open file for writing: " .. file_path)
     end
     return file
+end
+
+---@param file_path string
+---@return boolean
+local function fileExists(file_path)
+    local file = io.open(file_path, "r")
+    if file then
+        io.close(file)
+        return true
+    else
+        return false
+    end
 end
 
 ---@return string
@@ -145,11 +168,60 @@ end
 ---@class QueryParam
 ---@field index integer
 ---@field field string 
+---@field field_type string?
 ---@field value any | nil
 
 ---@class QueryDetails
 ---@field label string
+---@field fingerprint string
 ---@field params QueryParam[]
+
+
+--- takes a string containing key-value pairs with an arbitrary delimiter (defaults to " ") 
+---@param details string[]
+---@param key string
+---@param key_value_delimiter string
+---@return string?
+local function parse_field_from_details(details, key, key_value_delimiter)
+    for _, part in ipairs(details) do
+        local lil_parts = split(part, key_value_delimiter)
+        local k = lil_parts[1]
+        local value = table.concat(lil_parts, key_value_delimiter, 2)
+        if key == k and value ~= nil then
+            return trim(value)
+        end
+    end
+    return nil
+end
+
+---@param result string
+---@return string[]
+local function split_details_output(result)
+    local details = split(result, " ", 4)
+    if #details == 0 then
+        error("couldn't split " .. result)
+    end
+    local resp = {}
+    for _, deet in ipairs(details) do 
+        table.insert(resp, trim(deet))
+    end
+    return resp
+end
+
+---@return QueryParam[]
+local function parse_params_list_from_details(params_str)
+    -- TODO: handle parsing values that contain commas within quotes or parentheses
+    local params = {}
+    local param_parts = split(params_str, ",")
+    for _, param in ipairs(param_parts) do
+        local ps = split(param, ":")
+        local index = ps[1]
+        local field = trim(ps[2]) or nil
+        local field_type = trim(ps[3]) or nil
+        table.insert(params, {index=index, field=field, field_type=field_type})
+    end
+    return params
+end
 
 ---@param query string
 ---@return QueryDetails
@@ -160,24 +232,14 @@ local function parse_query_details(query)
     end
     local result = handle:read("*a")
     handle:close()
-    local parts = split(result, " ")
-    if #parts == 0 then
-        error("invalid query: " .. result)
+    local details = split_details_output(result)
+    local label = parse_field_from_details(details, "query", "=")
+    local fingerprint = parse_field_from_details(details, "fingerprint", "=")
+    local params_str = parse_field_from_details(details, "params", "=")
+    if params_str == nil then
+        return { label = label, fingerprint = fingerprint, params = {} }
     end
-    if #parts == 1 then
-        return { label = trim(split(parts[1], "=")[2]), params = {} }
-    end
-    local label = trim(split(parts[1], "=")[2])
-    local params_str = trim(split(parts[2], "=")[2])
-    local param_parts = split(params_str, ",")
-    local params = {}
-    for _, param in ipairs(param_parts) do
-        local ps = split(param, ":")
-        local index = ps[1]
-        local value = trim(ps[2]) or nil
-        table.insert(params, {index=index, field=value})
-    end
-    return { label = label, params = params }
+    return { label = label, fingerprint = fingerprint, params = parse_params_list_from_details(params_str) }
 end
 
 ---@param query_details QueryDetails
@@ -191,7 +253,7 @@ local function save_query_details(query_details)
         error("Failed to open file for writing: " .. file_path)
     end
     for _, param in ipairs(query_details.params) do
-    local line = string.format("%s,%s,%s", param.index, param.field, param.value or "")
+    local line = string.format("%s,%s,%s,%s", param.index, param.field, param.field_type, param.value or "")
         file:write(line .. "\n")
     end
     file:close()
@@ -206,9 +268,11 @@ local function parse_query_param_values(file_path)
     for line in file:lines() do
         local parts = split(line, ",")
         local index = parts[1]
-        local field = #parts > 1 and parts[2] or nil
-        local value = #parts > 2 and parts[3] or nil
-        table.insert(params, {index = index, field = field, value = value})
+        local field = (#parts > 1 and #parts[2] > 0) and parts[2] or nil
+        local field_type = (#parts > 2 and #parts[3] > 0) and parts[3] or nil
+        -- TODO: currently if the value is an array, such as with IN statements, this will evaluate to a string which could be nicer.
+        local value = (#parts > 3 and #parts[4] > 0) and table.concat(parts, ", ", 4) or nil
+        table.insert(params, {index = index, field = field, field_type = field_type, value = value})
     end
     file:close()
     return params
@@ -224,9 +288,10 @@ end
 
 function M.render()
     local query = get_nearest_sql_command()
-    local label = parse_query_details(query).label
-    local params = parse_query_param_values(get_query_temp_path(label))
-    print("got params " .. vim.inspect(params))
+    local details = parse_query_details(query)
+    local file_path = get_query_temp_path(details.label)
+    local param_values = fileExists(file_path) and parse_query_param_values(file_path) or {}
+    print("got param values " .. vim.inspect(param_values))
     -- local command = "echo \"" .. query .. '"' .. " | " .. M.output_cmd
     -- run_command(command)
 end
