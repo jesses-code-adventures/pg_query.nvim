@@ -1,24 +1,22 @@
-local lfs = require("lfs")
-
 ---@param s string 
 ---@return string
 local function trim(s)
-  if not s then
+    if not s then
     return s
-  end
-  return (s:gsub("^%s+", ""):gsub("%s+$", ""))
+    end
+    return (s:gsub("^%s+", ""):gsub("%s+$", ""))
 end
 
 ---@param value string
 ---@param delim string
 ---@return string[]
 local function split(value, delim)
-  local parts = {}
-  local pattern = "([^" .. delim .. "]+)"
-  for part in value:gmatch(pattern) do
+    local parts = {}
+    local pattern = "([^" .. delim .. "]+)"
+    for part in value:gmatch(pattern) do
       table.insert(parts, part)
-  end
-  return parts
+    end
+    return parts
 end
 
 --- @param binary_name string
@@ -39,12 +37,13 @@ local function ensure_binary_available(binary_name)
 end
 
 local function init()
-    if not ensure_binary_available("pg_query_fingerprint") then
-        return
-    end
-    if not ensure_binary_available("pg_query_json") then
-        return
-    end
+    -- don't currently need these
+    -- if not ensure_binary_available("pg_query_fingerprint") then
+    --     return
+    -- end
+    -- if not ensure_binary_available("pg_query_json") then
+    --     return
+    -- end
     if not ensure_binary_available("pg_query_prepare") then
         return
     end
@@ -99,16 +98,16 @@ end
 
 ---@return string
 local function get_nearest_sql_command()
-  local cursor_row = vim.api.nvim_win_get_cursor(0)[1]
-  local cursor_col = vim.api.nvim_win_get_cursor(0)[2] + 1
-  local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
-  local start_coord = getSqlStartCoord(lines, { row = cursor_row, col = cursor_col })
-  local end_coord = getSqlEndCoord(lines, { row = cursor_row, col = cursor_col })
-  local relevant_lines = {}
-  for i = start_coord.row, end_coord.row do
+    local cursor_row = vim.api.nvim_win_get_cursor(0)[1]
+    local cursor_col = vim.api.nvim_win_get_cursor(0)[2] + 1
+    local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
+    local start_coord = getSqlStartCoord(lines, { row = cursor_row, col = cursor_col })
+    local end_coord = getSqlEndCoord(lines, { row = cursor_row, col = cursor_col })
+    local relevant_lines = {}
+    for i = start_coord.row, end_coord.row do
     table.insert(relevant_lines, lines[i])
-  end
-  return trim(table.concat(relevant_lines, "\n"))
+    end
+    return trim(table.concat(relevant_lines, "\n"))
 end
 
 ---@class QueryParam
@@ -117,70 +116,88 @@ end
 ---@field value any | nil
 
 ---@class QueryDetails
----@field fingerprint string
+---@field label string
 ---@field params QueryParam[]
 
 ---@param query string
 ---@return QueryDetails
 local function parse_query_details(query)
-  local handle = io.popen("echo '" .. query .. "' | pg_query_prepare --details")
-  if not handle then
+    local handle = io.popen("echo '" .. query .. "' | pg_query_prepare --details")
+    if not handle then
     error("failed to get io handle in pg_query.write()")
-  end
-  local result = handle:read("*a")
-  handle:close()
-  local parts = split(result, " ")
-  if #parts == 0 then
+    end
+    local result = handle:read("*a")
+    handle:close()
+    local parts = split(result, " ")
+    if #parts == 0 then
     error("invalid query: " .. result)
-  end
-  if #parts == 1 then
-    return { fingerprint = trim(split(parts[1], "=")[2]), params = {} }
-  end
-  local fingerprint = trim(split(parts[1], "=")[2])
-  local params_str = trim(split(parts[2], "=")[2])
-  local param_parts = split(params_str, ",")
-  local params = {}
-  for _, param in ipairs(param_parts) do
+    end
+    if #parts == 1 then
+    return { label = trim(split(parts[1], "=")[2]), params = {} }
+    end
+    local label = trim(split(parts[1], "=")[2])
+    local params_str = trim(split(parts[2], "=")[2])
+    local param_parts = split(params_str, ",")
+    local params = {}
+    for _, param in ipairs(param_parts) do
     local ps = split(param, ":")
     local index = ps[1]
     local value = trim(ps[2]) or nil
     table.insert(params, {index=index, field=value})
-  end
-  return { fingerprint = fingerprint, params = params }
+    end
+    return { label = label, params = params }
+end
+
+---@param command string
+---@param mode string?
+---@return boolean, string|"exit"|"signal"?
+local function run_command(command, mode)
+    local handle = io.popen(command, mode)
+    if handle then
+        local result = handle:read("*a")
+        local success, reason, exit_code = handle:close() -- check for success
+        if success then
+            return true, result
+        else
+            print("Command failed: " .. (reason or "unknown") .. "\nexit code: " .. exit_code)
+            return false, reason
+        end
+    else
+        print("Failed to start command " .. command)
+        return false, nil
+    end
 end
 
 
 ---@param query_details QueryDetails
 local function save_query_details(query_details)
-  if #query_details.params == 0 then
+    if #query_details.params == 0 then
       return
-  end
-  local data_path = vim.fn.stdpath("data") .. "/pg_query/"
-  if lfs.attributes(data_path, "mode") ~= "directory" then
-      local success, err = lfs.mkdir(data_path)
-      if not success then
-          error("Could not create directory: " .. err)
-      end
-  end
-  local file_path = data_path .. query_details.fingerprint
-  local file = io.open(file_path, "w")
-  if not file then
+    end
+    local data_path = vim.fn.stdpath("data") .. "/pg_query/"
+    local success, _ = run_command("mkdir -p " .. data_path)
+    if not success then
+      error("Could not create directory: " .. success)
+    end
+    local file_path = data_path .. query_details.label
+    local file = io.open(file_path, "w")
+    if not file then
     error("Failed to open file for writing: " .. file_path)
-  end
-  for _, param in ipairs(query_details.params) do
+    end
+    for _, param in ipairs(query_details.params) do
     local line = string.format("%s,%s,%s", param.index, param.field, param.value or "")
     file:write(line .. "\n")
-  end
-  file:close()
-  print("saved query details to " .. file_path)
+    end
+    file:close()
+    print("saved query details to " .. file_path)
 end
 
 local M = {}
 
 function M.write()
-  local query = get_nearest_sql_command()
-  local details = parse_query_details(query)
-  save_query_details(details)
+    local query = get_nearest_sql_command()
+    local details = parse_query_details(query)
+    save_query_details(details)
 end
 
 function M.setup(opts)
