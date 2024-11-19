@@ -30,7 +30,7 @@ return {
     {
         "jesses-code-adventures/pg_query.nvim",
         keys = {
-            { "<leader>wq", function() require("pg_query").write(); end, mode = "n", desc = "Write postgres query" },
+            { "<leader>wq", function() require("pg_query").write(); end, mode = "n", desc = "Write query values" },
         }
     }
 }
@@ -54,7 +54,7 @@ return {
         enabled = true,
         lazy = false,
         keys = {
-            { "<leader>wq", function() require("pg_query").write(); end, mode = "n", desc = "Write postgres query" },
+            { "<leader>wq", function() require("pg_query").write(); end, mode = "n", desc = "Write query values" },
         }
     }
 }
@@ -63,8 +63,7 @@ return {
 ### todo
 
 - [x] cache queries as fingerprints in XDG_HOME (`vim.fn.stdpath("data")`) with their default values.
-- [ ] find better way than caching by fingerprint name, as the fingerprints are too volatile to use as keys.
-- [ ] have a Write command that allows you to update the default values. Should be done with a floating window.
-- [ ] have a Run command that allows you to execute the query with the fingerprint below the cursor, with its default values.
-- [ ] ability to execute the command in a tmux window called pg_query and run using psql/nice pager.
-- [ ] ability to execute the command in a new nvim split like dadbod, maybe even just using dadbod.
+- [ ] have a write() command that allows you to update the default values. Should be done with a floating window.
+- [ ] have a render() command that allows you to output the query with the literal values.
+- [ ] have a render_prepare() command that allows you to output the query as a prepare statement.
+- [ ] ability to have an output_cmd config option, which the query can be piped to. defaults to `pbcopy`.
