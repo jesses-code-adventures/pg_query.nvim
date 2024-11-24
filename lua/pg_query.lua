@@ -43,11 +43,11 @@ end
 ---@param result string
 ---@return string[]
 local function split_details_output(result)
+    local resp = {}
     local details = utils.Split(result, " ", 4)
     if #details == 0 then
-        error("couldn't strings.Split " .. result)
+        return resp
     end
-    local resp = {}
     for _, deet in ipairs(details) do
         table.insert(resp, utils.Trim(deet))
     end
@@ -70,7 +70,7 @@ local function parse_params_list_from_details(params_str)
 end
 
 ---@param query string
----@return QueryDetails
+---@return QueryDetails?
 local function parse_query_details(query)
     local handle = io.popen("echo '" .. query .. "' | pg_query_prepare --details")
     if not handle then
@@ -79,6 +79,9 @@ local function parse_query_details(query)
     local result = handle:read("*a")
     handle:close()
     local details = split_details_output(result)
+    if #details == 0 then
+        return nil
+    end
     local label = parse_field_from_details(details, "query", "=")
     local fingerprint = parse_field_from_details(details, "fingerprint", "=")
     local params_str = parse_field_from_details(details, "params", "=")
@@ -99,7 +102,7 @@ local function save_query_details(query_details)
         error("Failed to open file for writing: " .. file_path)
     end
     for _, param in ipairs(query_details.params) do
-    local line = string.format("%s,%s,%s,%s", param.index, param.field, param.field_type, param.value or "")
+    local line = string.format("%s,%s,%s,%s", param.index, param.field, param.field_type or "", param.value or "")
         file:write(line .. "\n")
     end
     file:close()
@@ -128,10 +131,11 @@ end
 ---@param query string
 ---@param params QueryParam[]
 ---@return string
-local function replace_placeholders(query, params)
+local function render_inplace_placeholders(query, params)
     for _, param in ipairs(params) do
         if param.value == nil then
-            error("expected a value for field \"" .. param.field .. "\" (argument index " .. param.index .. "), received nil.")
+            param.value = "''" -- TODO: throw error when updating arguments is enabled
+            -- error("expected a value for field \"" .. param.field .. "\" (argument index " .. param.index .. "), received nil.")
         end
         -- TODO: handle > single digit indexes
         local placeholder = " $" .. param.index .. ""
@@ -145,15 +149,23 @@ local M = {}
 function M.write()
     local query = from_vim_sql.Get_nearest_sql_command()
     local details = parse_query_details(query)
-    save_query_details(details)
+    if details ~= nil then
+        save_query_details(details)
+    else
+        print("No query found")
+    end
 end
 
 function M.render()
     local query = from_vim_sql.Get_nearest_sql_command()
     local details = parse_query_details(query)
+    if details == nil then
+        print("No query found")
+        return
+    end
     local file_path = utils.Get_query_temp_path(details.label)
     local param_values = utils.Exists(file_path) and parse_query_param_values(file_path) or {}
-    local replaced = replace_placeholders(query, param_values)
+    local replaced = render_inplace_placeholders(query, param_values)
     local command = "echo \"" .. replaced .. '"' .. " | " .. M.output_cmd
     utils.Run_command(command)
 end
