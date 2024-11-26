@@ -148,7 +148,7 @@ end
 local M = {}
 
 ---@return QueryDetails?
-function M.write()
+local function write_query_details_from_editor()
     local query = from_vim_sql.Get_nearest_sql_command()
     local details = parse_query_details(query)
     if details == nil then
@@ -159,17 +159,13 @@ function M.write()
     return details
 end
 
-function M.edit_params()
-    local details = M.write()
+function M.write()
+    local details = write_query_details_from_editor()
     if details == nil then
         print("No query found")
         return
     end
     M.buf = edit_params_window.show_query_params(details.params, {fields_align_right=M.fields_align_right, field_separator=M.field_separator})
-end
-
-function M.restore_lines()
-    edit_params_window.restore_lines(M.buf)
 end
 
 function M.render()
