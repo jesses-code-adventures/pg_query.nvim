@@ -1,5 +1,6 @@
 local utils = require("utils")
 local from_vim_sql = require("parse_from_vim.sql")
+local edit_params_window = require("ui.window")
 
 local function init()
     if not utils.Ensure_binary_available("pg_query_prepare") then
@@ -106,7 +107,7 @@ local function save_query_details(query_details)
         file:write(line .. "\n")
     end
     file:close()
-    print("saved query details to " .. file_path)
+    print(file_path)
 end
 
 ---@param file_path string
@@ -146,14 +147,29 @@ end
 
 local M = {}
 
+---@return QueryDetails?
 function M.write()
     local query = from_vim_sql.Get_nearest_sql_command()
     local details = parse_query_details(query)
-    if details ~= nil then
-        save_query_details(details)
-    else
+    if details == nil then
         print("No query found")
+        return nil
     end
+    save_query_details(details)
+    return details
+end
+
+function M.edit_params()
+    local details = M.write()
+    if details == nil then
+        print("No query found")
+        return
+    end
+    M.buf = edit_params_window.show_query_params(details.params)
+end
+
+function M.restore_lines()
+    edit_params_window.restore_lines(M.buf)
 end
 
 function M.render()
