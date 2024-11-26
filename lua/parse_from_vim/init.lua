@@ -1,4 +1,4 @@
-local utils = require("utils")
+require("utils")
 
 ---@class FilePoint
 ---@field row number
@@ -46,10 +46,8 @@ local function getSqlEndCoord(lines, cursor)
     return { row = #lines, col = #lines[#lines] } -- default to end of file if no semicolon is found
 end
 
-local M = {}
-
 ---@return string
-function M.Get_nearest_sql_command()
+function Get_nearest_sql_command()
     local cursor_row = vim.api.nvim_win_get_cursor(0)[1]
     local cursor_col = vim.api.nvim_win_get_cursor(0)[2] + 1
     local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
@@ -59,7 +57,5 @@ function M.Get_nearest_sql_command()
     for i = start_coord.row, end_coord.row do
         table.insert(relevant_lines, lines[i])
     end
-    return utils.Trim(table.concat(relevant_lines, "\n"))
+    return Trim(table.concat(relevant_lines, "\n"))
 end
-
-return M

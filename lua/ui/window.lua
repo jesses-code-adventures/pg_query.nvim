@@ -26,10 +26,11 @@ end
 ---@param query_params QueryParam[]
 local function setup_keymaps(buf, query_params)
     api.nvim_buf_set_keymap(buf, 'n', '<CR>', [[<Cmd>lua require('pg_query').edit_param()<CR>]], { noremap = true, silent = true })
-    -- api.nvim_buf_set_keymap(buf, 'n', '<CR>', [[<Cmd>lua require('pg_query').ui.return_edited_values()<CR>]], { noremap = true, silent = true })
     api.nvim_buf_set_keymap(buf, 'n', 'dd', '0d$', { noremap = true, silent = true })
     vim.b.query_params = query_params
-    vim.cmd(string.format("autocmd BufWriteCmd <buffer=%d> lua require('pg_query').handle_write()", buf))
+    vim.cmd(string.format([[
+        autocmd BufWritePre <buffer=%d> lua require('pg_query').update_query_params(%d)
+    ]], buf, buf))
 end
 
 ---@param buf integer
@@ -54,17 +55,20 @@ local function render_query_params(buf, query_params, fields_align_right, field_
     end
 end
 
---- @param query_params QueryParam[]
---- @param index integer
---- @return QueryParam[]
-local function edit_value(query_params, index)
-    local prompt = string.format("Edit value for %s: ", query_params[index].field)
-    vim.ui.input({ prompt = prompt, default = query_params[index].value or "" }, function(input)
-        if input then
-            query_params[index].value = input
-            return query_params
-        end
-    end)
+---@param buf integer
+---@param query_params QueryParam[]
+---@return QueryParam[] | nil
+local function update_query_params_with_buffer_values(buf, query_params)
+    print("updating query params...")
+    local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
+    if #lines ~= #query_params then
+        error("Mismatch: Number of buffer lines does not match query_params length")
+    end
+    for i, line in ipairs(lines) do
+        query_params[i].value = line
+    end
+    print("updated query params...")
+    print(vim.inspect(query_params))
     return query_params
 end
 
@@ -74,7 +78,7 @@ end
 
 ---@param query_params QueryParam[]
 ---@param opts UIOpts
-function M.show_query_params(query_params, opts)
+function M.edit_query_values(query_params, opts)
     M.params = query_params
     local buf, _ = create_floating_window()
     render_query_params(buf, M.params, opts.fields_align_right, opts.field_separator)
@@ -92,14 +96,28 @@ function M.handle_write(write_fn)
     write_fn(M.query_file_name)
 end
 
-function M.edit_param()
-    local cursor = api.nvim_win_get_cursor(0)
-    local line = cursor[1] local query_params = vim.b.query_params
-    if line <= #query_params then
-        query_params = edit_value(query_params, line)
-        vim.b.query_params = query_params
-    end
-    return vim.b.query_params
-end
-
 return M
+
+-- function M.edit_param()
+--     local cursor = api.nvim_win_get_cursor(0)
+--     local line = cursor[1] local query_params = vim.b.query_params
+--     if line <= #query_params then
+--         query_params = edit_value(query_params, line)
+--         vim.b.query_params = query_params
+--     end
+--     return vim.b.query_params
+-- end
+
+-- --- @param query_params QueryParam[]
+-- --- @param index integer
+-- --- @return QueryParam[]
+-- local function edit_value(query_params, index)
+--     local prompt = string.format("Edit value for %s: ", query_params[index].field)
+--     vim.ui.input({ prompt = prompt, default = query_params[index].value or "" }, function(input)
+--         if input then
+--             query_params[index].value = input
+--             return query_params
+--         end
+--     end)
+--     return query_params
+-- end

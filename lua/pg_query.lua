@@ -1,104 +1,29 @@
-local utils = require("utils")
-local from_vim_sql = require("parse_from_vim.sql")
+require("utils")
+require("parse_from_vim")
+require("parse_from_pg_query")
 local edit_params_window = require("ui.window")
 
 local function init()
-    if not utils.Ensure_binary_available("pg_query_prepare") then
+    if not Ensure_binary_available("pg_query_prepare") then
         return
     end
-    local success, msg = utils.Run_command("mkdir -p " .. utils.Get_temp_dir())
+    local success, msg = Run_command("mkdir -p " .. Get_temp_dir())
     if not success then
         error("Could not create pg_query temp_dir: " .. msg)
     end
 end
 
----@class QueryParam
----@field index integer
----@field field string 
----@field field_type string?
----@field value any | nil
-
----@class QueryDetails
----@field label string
----@field fingerprint string
----@field params QueryParam[]
-
-
---- takes a string containing key-value pairs with an arbitrary delimiter (defaults to " ") 
----@param details string[]
----@param key string
----@param key_value_delimiter string
----@return string?
-local function parse_field_from_details(details, key, key_value_delimiter)
-    for _, part in ipairs(details) do
-        local lil_parts = utils.Split(part, key_value_delimiter)
-        local k = lil_parts[1]
-        local value = table.concat(lil_parts, key_value_delimiter, 2)
-        if key == k and value ~= nil then
-            return utils.Trim(value)
-        end
-    end
-    return nil
-end
-
----@param result string
----@return string[]
-local function split_details_output(result)
-    local resp = {}
-    local details = utils.Split(result, " ", 4)
-    if #details == 0 then
-        return resp
-    end
-    for _, deet in ipairs(details) do
-        table.insert(resp, utils.Trim(deet))
-    end
-    return resp
-end
-
----@return QueryParam[]
-local function parse_params_list_from_details(params_str)
-    -- TODO: handle parsing values that contain commas within quotes or parentheses
-    local params = {}
-    local param_parts = utils.Split(params_str, ",")
-    for _, param in ipairs(param_parts) do
-        local ps = utils.Split(param, ":")
-        local index = ps[1]
-        local field = utils.Trim(ps[2]) or nil
-        local field_type = utils.Trim(ps[3]) or nil
-        table.insert(params, {index=index, field=field, field_type=field_type})
-    end
-    return params
-end
-
----@param query string
----@return QueryDetails?
-local function parse_query_details(query)
-    local handle = io.popen("echo '" .. query .. "' | pg_query_prepare --details")
-    if not handle then
-        error("failed to get io handle in pg_query.write()")
-    end
-    local result = handle:read("*a")
-    handle:close()
-    local details = split_details_output(result)
-    if #details == 0 then
-        return nil
-    end
-    local label = parse_field_from_details(details, "query", "=")
-    local fingerprint = parse_field_from_details(details, "fingerprint", "=")
-    local params_str = parse_field_from_details(details, "params", "=")
-    if params_str == nil then
-        return { label = label, fingerprint = fingerprint, params = {} }
-    end
-    return { label = label, fingerprint = fingerprint, params = parse_params_list_from_details(params_str) }
-end
-
 ---@param query_details QueryDetails
 local function save_query_details(query_details)
+    -- TODO: we need to check if there are existing values, and merge those with our details.
+    --       this should include ensuring values are moved appropriately if the order of the arguments has changed.
+    --       we could use the fingerprint, to essentially "invalidate the cache" on the stored values and perform the reordering process.
+    --       there should also be an option to retain the values passed with query_details, in case they are newer than the values on disk.
     if #query_details.params == 0 then
         return
     end
-    local file_path = utils.Get_query_temp_path(query_details.label)
-    local file = utils.Open_or_error(file_path, "w")
+    local file_path = Get_query_temp_path(query_details.label)
+    local file = Open_or_error(file_path, "w")
     if not file then
         error("Failed to open file for writing: " .. file_path)
     end
@@ -113,10 +38,10 @@ end
 ---@param file_path string
 ---@return QueryParam[]
 local function parse_query_param_values(file_path)
-    local file = utils.Open_or_error(file_path)
+    local file = Open_or_error(file_path)
     local params = {}
     for line in file:lines() do
-        local parts = utils.Split(line, ",")
+        local parts = Split(line, ",")
         local index = parts[1]
         local field = (#parts > 1 and #parts[2] > 0) and parts[2] or nil
         local field_type = (#parts > 2 and #parts[3] > 0) and parts[3] or nil
@@ -149,8 +74,8 @@ local M = {}
 
 ---@return QueryDetails?
 local function write_query_details_from_editor()
-    local query = from_vim_sql.Get_nearest_sql_command()
-    local details = parse_query_details(query)
+    local query = Get_nearest_sql_command()
+    local details = Parse_query_details(query)
     if details == nil then
         print("No query found")
         return nil
@@ -165,21 +90,21 @@ function M.write()
         print("No query found")
         return
     end
-    M.buf = edit_params_window.show_query_params(details.params, {fields_align_right=M.fields_align_right, field_separator=M.field_separator})
+    M.buf = edit_params_window.edit_query_values(details.params, {fields_align_right=M.fields_align_right, field_separator=M.field_separator})
 end
 
 function M.render()
-    local query = from_vim_sql.Get_nearest_sql_command()
-    local details = parse_query_details(query)
+    local query = Get_nearest_sql_command()
+    local details = Parse_query_details(query)
     if details == nil then
         print("No query found")
         return
     end
-    local file_path = utils.Get_query_temp_path(details.label)
-    local param_values = utils.Exists(file_path) and parse_query_param_values(file_path) or {}
+    local file_path = Get_query_temp_path(details.label)
+    local param_values = Exists(file_path) and parse_query_param_values(file_path) or {}
     local replaced = render_inplace_placeholders(query, param_values)
     local command = "echo \"" .. replaced .. '"' .. " | " .. M.output_cmd
-    utils.Run_command(command)
+    Run_command(command)
 end
 
 ---@class PgQueryOpts
