@@ -165,7 +165,7 @@ function M.edit_params()
         print("No query found")
         return
     end
-    M.buf = edit_params_window.show_query_params(details.params)
+    M.buf = edit_params_window.show_query_params(details.params, {fields_align_right=M.fields_align_right, field_separator=M.field_separator})
 end
 
 function M.restore_lines()
@@ -186,9 +186,17 @@ function M.render()
     utils.Run_command(command)
 end
 
+---@class PgQueryOpts
+---@field output_cmd string @The CLI program to pipe your SQL queries into. Defaults to 'pbcopy'.
+---@field field_separator string @The string separating the query values you're editing and the field name. Defaults to ' ✦ '.
+---@field fields_align_right boolean @In the edit buffer, align the field names to the right of the buffer. Defaults to false.
+
+---@param opts PgQueryOpts
 function M.setup(opts)
     opts = opts or {}
     M.output_cmd = opts.output_cmd or "pbcopy"
+    M.field_separator = opts.field_separator or " ✦ "
+    M.fields_align_right = opts.fields_align_right or false
     init()
 end
 

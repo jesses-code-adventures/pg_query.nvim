@@ -5,7 +5,7 @@ local M = {}
 local function create_floating_window()
     local buf = api.nvim_create_buf(false, true)
     local width = 80
-    local height = 80
+    local height = vim.o.lines - 8
     local opts = {
         title = 'pg_query',
         relative = 'editor',
@@ -22,10 +22,20 @@ local function create_floating_window()
     return buf, win
 end
 
+---@param buf integer
+---@param query_params QueryParam[]
+local function setup_keymaps(buf, query_params)
+    api.nvim_buf_set_keymap(buf, 'n', '<CR>', [[<Cmd>lua require('pg_query').edit_param()<CR>]], { noremap = true, silent = true })
+    -- api.nvim_buf_set_keymap(buf, 'n', '<CR>', [[<Cmd>lua require('pg_query').ui.return_edited_values()<CR>]], { noremap = true, silent = true })
+    api.nvim_buf_set_keymap(buf, 'n', 'dd', '0d$', { noremap = true, silent = true })
+    vim.b.query_params = query_params
+    vim.cmd(string.format("autocmd BufWriteCmd <buffer=%d> lua require('pg_query').handle_write()", buf))
+end
 
 ---@param buf integer
 ---@param query_params QueryParam[]
-local function render_query_params(buf, query_params)
+---@param fields_align_right boolean
+local function render_query_params(buf, query_params, fields_align_right, field_separator)
     local ns_id = vim.api.nvim_create_namespace("query_params_ns")
     for i, param in ipairs(query_params) do
         local line_num = i - 1
@@ -34,12 +44,12 @@ local function render_query_params(buf, query_params)
         end
         local field_text = param.field or ""
         if field_text ~= "" then
-            field_text = " ✦ " .. field_text
+            field_text = field_separator .. field_text
         end
         local virt_text = {{ field_text, "DiagnosticInfo" }}
         vim.api.nvim_buf_set_extmark(buf, ns_id, line_num, 0, {
             virt_text = virt_text,
-            virt_text_pos = "eol",
+            virt_text_pos = fields_align_right and "right_align" or "eol",
         })
     end
 end
@@ -58,21 +68,16 @@ local function edit_value(query_params, index)
     return query_params
 end
 
----@param buf integer
----@param query_params QueryParam[]
-local function setup_keymaps(buf, query_params)
-    api.nvim_buf_set_keymap(buf, 'n', '<CR>', [[<Cmd>lua require('pg_query').edit_param()<CR>]], { noremap = true, silent = true })
-    -- api.nvim_buf_set_keymap(buf, 'n', '<CR>', [[<Cmd>lua require('pg_query').ui.return_edited_values()<CR>]], { noremap = true, silent = true })
-    api.nvim_buf_set_keymap(buf, 'n', 'dd', '0d$', { noremap = true, silent = true })
-    vim.b.query_params = query_params
-    vim.cmd(string.format("autocmd BufWriteCmd <buffer=%d> lua require('pg_query').handle_write()", buf))
-end
+---@class UIOpts
+---@field fields_align_right boolean
+---@field field_separator string
 
 ---@param query_params QueryParam[]
-function M.show_query_params(query_params)
+---@param opts UIOpts
+function M.show_query_params(query_params, opts)
     M.params = query_params
     local buf, _ = create_floating_window()
-    render_query_params(buf, M.params)
+    render_query_params(buf, M.params, opts.fields_align_right, opts.field_separator)
     setup_keymaps(buf, M.params)
     return buf
 end
