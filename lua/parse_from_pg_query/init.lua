@@ -79,4 +79,3 @@ function Parse_query_details(query)
     end
     return { label = label, fingerprint = fingerprint, params = parse_params_list_from_details(params_str) }
 end
-

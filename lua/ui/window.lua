@@ -29,7 +29,7 @@ local function setup_keymaps(buf, query_params)
     api.nvim_buf_set_keymap(buf, 'n', 'dd', '0d$', { noremap = true, silent = true })
     vim.b.query_params = query_params
     vim.cmd(string.format([[
-        autocmd BufWritePre <buffer=%d> lua require('pg_query').update_query_params(%d)
+        autocmd BufWinLeave <buffer=%d> lua require('pg_query').ui.update_query_params_with_buffer_values(%d)
     ]], buf, buf))
 end
 
@@ -97,27 +97,3 @@ function M.handle_write(write_fn)
 end
 
 return M
-
--- function M.edit_param()
---     local cursor = api.nvim_win_get_cursor(0)
---     local line = cursor[1] local query_params = vim.b.query_params
---     if line <= #query_params then
---         query_params = edit_value(query_params, line)
---         vim.b.query_params = query_params
---     end
---     return vim.b.query_params
--- end
-
--- --- @param query_params QueryParam[]
--- --- @param index integer
--- --- @return QueryParam[]
--- local function edit_value(query_params, index)
---     local prompt = string.format("Edit value for %s: ", query_params[index].field)
---     vim.ui.input({ prompt = prompt, default = query_params[index].value or "" }, function(input)
---         if input then
---             query_params[index].value = input
---             return query_params
---         end
---     end)
---     return query_params
--- end

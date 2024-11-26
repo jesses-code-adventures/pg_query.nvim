@@ -90,7 +90,7 @@ function M.write()
         print("No query found")
         return
     end
-    M.buf = edit_params_window.edit_query_values(details.params, {fields_align_right=M.fields_align_right, field_separator=M.field_separator})
+    M.buf = M.ui.edit_query_values(details.params, {fields_align_right=M.fields_align_right, field_separator=M.field_separator})
 end
 
 function M.render()
@@ -118,6 +118,7 @@ function M.setup(opts)
     M.output_cmd = opts.output_cmd or "pbcopy"
     M.field_separator = opts.field_separator or " ✦ "
     M.fields_align_right = opts.fields_align_right or false
+    M.ui = edit_params_window
     init()
 end
 
