@@ -1,8 +1,8 @@
--- name: GetPeople :many
-with people as (
-    select * from person
+-- name: GetUsers :many
+with users as (
+    select * from users
     where id = $1
-    and from_party_id = $2
-    and to_party_id = $3
 )
 select * from users;
+
+select * from users where id = $1 and name = $2;

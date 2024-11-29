@@ -7,12 +7,13 @@ require("utils")
 ---@field value any? @The value to be used for this parameter when the query is rendered.
 
 ---@class QueryDetails @Query details parsed from pg_query_prepare --details.
----@field label string @The label of the query. Takes the `-- name:` annotation where available, else uses the fingerprint.
----@field fingerprint string @The unqiue fingerprint of the parsed query, which can be used to quickly check whether the query named `label` has changed, as the fingerprint would also change.
+---@field query string @The label of the query. 
+---@field fingerprint string @The unique fingerprint of the parsed query.
 ---@field params QueryParam[] @The parameters of the query, including the field name, the argument index, and optionally the field type and argument values.
+---@field params_variant string? @The name of the variant of this set of params, defined by the user.
 
 
---- takes a string containing key-value pairs with an arbitrary delimiter (defaults to " ") 
+--- takes an array of single key-value pairs split by a given delimiter, and returns the value for the key. 
 ---@param details string[]
 ---@param key string
 ---@param key_value_delimiter string
@@ -43,9 +44,10 @@ local function split_details_output(result)
     return resp
 end
 
+---Parse the raw query params from pg_query_prepare --details. 
+---This will never include arguments/the user defined parameter values (same thing).
 ---@return QueryParam[]
-local function parse_params_list_from_details(params_str)
-    -- TODO: handle parsing values that contain commas within quotes or parentheses
+local function parse_query_params(params_str)
     local params = {}
     local param_parts = Split(params_str, ",")
     for _, param in ipairs(param_parts) do
@@ -58,24 +60,22 @@ local function parse_params_list_from_details(params_str)
     return params
 end
 
----@param query string @A postgres query, as a string, to pass to pg_query_prepare --details.
+---Takes one postgres query as a string, and returns QueryDetails whose params have empty values.
+---The response from this will always have a nil params_variant, as we know nothing about the param values here.
+---@param query_string string @A postgres query, as a string, to pass to pg_query_prepare --details.
 ---@return QueryDetails?
-function Parse_query_details(query)
-    local handle = io.popen("echo '" .. query .. "' | pg_query_prepare --details")
-    if not handle then
-        error("failed to get io handle in pg_query.write()")
-    end
-    local result = handle:read("*a")
-    handle:close()
+function Parse_pg_query_prepare_details(query_string)
+    local command = "echo '" .. query_string .. "' | pg_query_prepare --details"
+    local result = Run_cli_command(command)
     local details = split_details_output(result)
     if #details == 0 then
         return nil
     end
-    local label = parse_field_from_details(details, "query", "=")
+    local query = parse_field_from_details(details, "query", "=")
     local fingerprint = parse_field_from_details(details, "fingerprint", "=")
     local params_str = parse_field_from_details(details, "params", "=")
     if params_str == nil then
-        return { label = label, fingerprint = fingerprint, params = {} }
+        return { query = query, fingerprint = fingerprint, params = {}, params_variant = nil }
     end
-    return { label = label, fingerprint = fingerprint, params = parse_params_list_from_details(params_str) }
+    return { query = query, fingerprint = fingerprint, params = parse_query_params(params_str), params_variant = nil }
 end

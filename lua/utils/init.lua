@@ -1,12 +1,26 @@
+TEMP_FILE_SEPARATOR = "-_-_-"
+
 ---@param file_path string
 ---@param mode string?
 ---@return file*
 function Open_or_error(file_path, mode)
     local file = io.open(file_path, mode)
     if not file then
-        error("Failed to open file for writing: " .. file_path)
+        error("Failed to open file: " .. file_path)
     end
     return file
+end
+
+---@param command string
+---@return any
+function Run_cli_command(command)
+    local handle = io.popen(command)
+    if not handle then
+        error("couldn't get a handle for the attempted command: " .. command)
+    end
+    local result = handle:read("*a")
+    handle:close()
+    return result
 end
 
 ---@param file_path string
@@ -97,4 +111,32 @@ function Ensure_binary_available(binary_name)
         error(binary_name .. " not available, install " .. " or add it to your PATH")
     end
     return success
+end
+
+---@param query_details QueryDetails
+---@return string
+function Query_file_path(query_details)
+    -- TODO: add fingerprint if we want it, so we can match against `query` and invalidate if `fingerprint` doesn't match
+    return Get_query_temp_path(query_details.query)
+end
+
+---@param query_details QueryDetails
+---@return string?
+function Values_file_path(query_details)
+    local fallback = "__PG_QUERY_UTILS_ARGS_FALLBACK__"
+    -- TODO: add fingerprint if we want it, so we can match against `query` and invalidate if `fingerprint` doesn't match
+    if query_details.params_variant then
+        return Get_query_temp_path(query_details.query) .. TEMP_FILE_SEPARATOR .. query_details.params_variant
+    end
+    return Get_query_temp_path(query_details.query .. TEMP_FILE_SEPARATOR .. fallback)
+end
+
+---@param var string
+---@return string
+function Env_var_must(var)
+    local val = os.getenv(var)
+    if not val then
+        error("Missing expected environment variable for [" .. var .. "].")
+    end
+    return val
 end
