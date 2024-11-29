@@ -4,7 +4,7 @@ local M = {}
 ---@param num_params number @Number of empty lines to add if the file doesn't exist.
 ---@param query_name string? @Query name for display purposes.
 local function floating_bufwin_from_path(file_path, num_params, query_name)
-    local buf = vim.api.nvim_create_buf(false, true)
+    local buf = vim.api.nvim_create_buf(true, false)
     if vim.fn.filereadable(file_path) == 1 then
         vim.api.nvim_buf_call(buf, function()
             vim.cmd("silent! edit " .. vim.fn.fnameescape(file_path))
@@ -41,6 +41,14 @@ local function floating_bufwin_from_path(file_path, num_params, query_name)
     vim.api.nvim_set_option_value('modifiable', true, { buf = buf })
     vim.api.nvim_set_option_value('modified', false, { buf = buf })
     vim.api.nvim_set_option_value('buftype', '', { buf = buf })
+        vim.api.nvim_create_autocmd("WinClosed", {
+        buffer = buf,
+        callback = function()
+            if vim.api.nvim_buf_is_valid(buf) then
+                vim.api.nvim_buf_delete(buf, { force = true })
+            end
+        end,
+    })
     return buf, win
 end
 
@@ -50,6 +58,7 @@ end
 ---@param field_separator string
 local function render_field_names(buf, query_params, fields_align_right, field_separator)
     local ns_id = vim.api.nvim_create_namespace("field_names_ns")
+    vim.api.nvim_buf_clear_namespace(buf, ns_id, 0, -1)
     for i, param in ipairs(query_params) do
         local line_num = i - 1
         local field_text = param.field or ""
@@ -72,6 +81,7 @@ end
 
 ---@param opts UIOpts
 function M.edit_query_values(opts)
+    M.params = nil
     M.params = opts.query_details.params
     local buf, _ = floating_bufwin_from_path(opts.file_path, #opts.query_details.params or 0, opts.query_details.query)
     render_field_names(buf, M.params, opts.fields_align_right, opts.field_separator)
