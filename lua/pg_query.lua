@@ -16,7 +16,8 @@ function M.edit()
     local query_file_path = Query_file_path(details)
     Write_query_details_no_params(query_file_path, details)
     local values_file_path = Values_file_path(details)
-    M.buf = M.ui.open_edit_window({fields_align_right=M.fields_align_right, field_separator=M.field_separator, details=details, file_path=values_file_path})
+    print(vim.inspect(details))
+    M.buf = M.ui.open_edit_window(details, values_file_path, M.ui_opts)
 end
 
 function M.run()
@@ -37,25 +38,31 @@ function M.run()
     Run_command(command)
 end
 
+---@class DbCredLabels
+---@field db_host string? @The DB_HOST value
+---@field db_name string? @The DB_NAME value
+---@field db_port string? @The DB_PORT value
+---@field db_password string? @The DB_PASSWORD value
+---@field db_user string? @The DB_USER value
+
 ---@class PgQueryOpts
 ---@field output_cmd string @The CLI program to pipe your SQL queries into. Defaults to 'pbcopy'.
----@field field_separator string @The string separating the query values you're editing and the field name. Defaults to ' ✦ '.
----@field fields_align_right boolean @In the edit buffer, align the field names to the right of the buffer. Defaults to false.
----@field env_db_name string? @Optional name of the environment variable to source the DB_NAME.
+---@field db_cred_labels DbCredLabels? @Optional name of the environment variable to source the DB_NAME.
+---@field ui UIOpts
 
 ---@param opts PgQueryOpts
 function M.setup(opts)
     opts = opts or {}
-    M.ui = require("ui")
-    M.output_cmd = opts.output_cmd or "pbcopy"
-    M.field_separator = opts.field_separator or " ✦ "
-    M.fields_align_right = opts.fields_align_right or false
-    M.db_name = nil
-    if opts.env_db_name then
-        M.db_name = Env_var_must(opts.env_db_name)
-    end
     if not Ensure_binary_available("pg_query_prepare") then
+        error("please install `pg_query_prepare` - see 'prerequisites' in `README.md`.")
         return
+    end
+    M.ui = require("ui")
+    M.ui_opts = opts.ui or {}
+    M.db_cred_labels = opts.db_cred_labels or {}
+    M.output_cmd = opts.output_cmd or "pbcopy"
+    if M.db_cred_labels and M.db_cred_labels.db_name then
+        M.db_name = Env_var_must(M.db_cred_labels.db_name)
     end
     local success, msg = Run_command("mkdir -p " .. Get_temp_dir())
     if not success then

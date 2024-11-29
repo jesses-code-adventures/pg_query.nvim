@@ -2,11 +2,10 @@
 
 neovim wrapper for [pg_query_utils](https://github.com/timwmillard/pg_query_utils.git).
 
-## prerequisites
+## prerequisites -normal use
 
-If you're planning to clone this repo, you should start there and run `make init` to download and install `pg_query_utils`.
-
-If not, you'll need to install [pg_query_utils](https://github.com/timwmillard/pg_query_utils.git) yourself and ensure that `pg_query_prepare` is available in your PATH. Currently, using this script handles the installation process for you.
+Install [pg_query_utils](https://github.com/timwmillard/pg_query_utils.git) by running this script, then call
+`which pg_query_prepare` to make sure it was successful.
 
 ```bash
 git clone --recurse-submodules --depth 1 https://github.com/timwmillard/pg_query_utils.git && \
@@ -31,20 +30,36 @@ return {
         "jesses-code-adventures/pg_query.nvim",
         keys = {
             { "<leader>pe", function() require("pg_query").edit(); end, mode = "n", desc = "Edit default param values for the query under the cursor." },
-            { "<leader>pr", function() require("pg_query").run(); end, mode = "n", desc = "Render postgres query with values, and pipe into output_cmd." },
+            { "<leader>pr", function() require("pg_query").run(); end, mode = "n", desc = "Render postgres query with values, and pipe into output_cmd. Opens an edit window if values don't exist." },
         },
         -- these are the default values. if you're happy with them, you can just pass an empty table to opts.
         opts = {
-            env_db_name=nil, -- name of the environment variable pg_query should search for to get the `DB_NAME`.
-            field_separator=' ✦ ', -- in the edit buffer, the string that separates the field label from the input text.
-            fields_align_right=false, -- in the edit buffer, choose to align the field names to the right of the buffer.
             output_cmd='pbcopy', -- when rendering your query with values (ie calling render()), the rendered sql command will be piped into this command line program.
+            -- we have db_cred_labels so you can pass as flags to psql, etc
+            db_cred_labels={
+                db_name=nil, -- name of the environment variable pg_query should search for to get the `DB_NAME`.
+                db_user=nil, -- name of the environment variable pg_query should search for to get the `DB_USER`.
+                db_password=nil, -- name of the environment variable pg_query should search for to get the `DB_PASSWORD`.
+                db_port=nil, -- name of the environment variable pg_query should search for to get the `DB_PORT`.
+                db_host=nil, -- name of the environment variable pg_query should search for to get the `DB_HOST`.
+            },
+            ui = {
+                field_separator=' ✦ ', -- in the edit buffer, the string that separates the field label from the input text.
+                fields_align_right=false, -- in the edit buffer, choose to align the field names to the right of the buffer.
+            }
         }
     }
 }
 ```
 
 ## dev installation
+
+### dev prerequisites
+
+- Clone this repo.
+- In the repo, run `make init`.
+
+### dev lazy config
 
 ```lua
 local dev = true
@@ -62,14 +77,23 @@ return {
         enabled = true,
         keys = {
             { "<leader>pe", function() require("pg_query").edit(); end, mode = "n", desc = "Edit default param values for the query under the cursor." },
-            { "<leader>pr", function() require("pg_query").run(); end, mode = "n", desc = "Render postgres query with values, and pipe into output_cmd." },
+            { "<leader>pr", function() require("pg_query").run(); end, mode = "n", desc = "Render postgres query with values, and pipe into output_cmd. Opens an edit window if values don't exist." },
         },
         -- these are the default values. if you're happy with them, you can just pass an empty table to opts.
         opts = {
-            env_db_name=nil, -- name of the environment variable pg_query should search for to get the `DB_NAME`.
-            field_separator=' ✦ ', -- in the edit buffer, the string that separates the field label from the input text.
-            fields_align_right=false, -- in the edit buffer, choose to align the field names to the right of the buffer.
             output_cmd='pbcopy', -- when rendering your query with values (ie calling render()), the rendered sql command will be piped into this command line program.
+            -- we have db_cred_labels so you can pass as flags to psql, etc
+            db_cred_labels={
+                db_name=nil, -- name of the environment variable pg_query should search for to get the `DB_NAME`.
+                db_user=nil, -- name of the environment variable pg_query should search for to get the `DB_USER`.
+                db_password=nil, -- name of the environment variable pg_query should search for to get the `DB_PASSWORD`.
+                db_port=nil, -- name of the environment variable pg_query should search for to get the `DB_PORT`.
+                db_host=nil, -- name of the environment variable pg_query should search for to get the `DB_HOST`.
+            },
+            ui = {
+                field_separator=' ✦ ', -- in the edit buffer, the string that separates the field label from the input text.
+                fields_align_right=false, -- in the edit buffer, choose to align the field names to the right of the buffer.
+            }
         }
     }
 }

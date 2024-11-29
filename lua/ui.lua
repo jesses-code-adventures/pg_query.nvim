@@ -65,13 +65,13 @@ local function set_window_options(buf, win)
 end
 
 ---@param buf integer
----@param query_params QueryParam[]
+---@param details QueryDetails
 ---@param fields_align_right boolean
 ---@param field_separator string
-local function render_field_names(buf, query_params, fields_align_right, field_separator)
+local function render_field_names(buf, details, fields_align_right, field_separator)
     local ns_id = vim.api.nvim_create_namespace("field_names_ns")
     vim.api.nvim_buf_clear_namespace(buf, ns_id, 0, -1)
-    for i, param in ipairs(query_params) do
+    for i, param in ipairs(details.params) do
         local line_num = i - 1
         local field_text = param.field or ""
         if field_text ~= "" then
@@ -88,16 +88,16 @@ end
 ---@class UIOpts
 ---@field fields_align_right boolean
 ---@field field_separator string
----@field details QueryDetails
----@field file_path string?
 
----@param opts UIOpts
-function M.open_edit_window(opts)
+---@param details QueryDetails
+---@param file_path string
+---@param ui_opts UIOpts
+function M.open_edit_window(details, file_path, ui_opts)
     M.params = nil
-    M.params = opts.details.params
-    local buf, win = floating_bufwin_from_path(opts.file_path, #opts.details.params or 0, opts.details.query)
+    M.params = details
+    local buf, win = floating_bufwin_from_path(file_path, #details.params or 0, details.query)
     set_window_options(buf, win)
-    render_field_names(buf, M.params, opts.fields_align_right, opts.field_separator)
+    render_field_names(buf, M.params, ui_opts.fields_align_right, ui_opts.field_separator)
     return buf
 end
 

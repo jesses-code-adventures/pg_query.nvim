@@ -121,7 +121,7 @@ function Query_file_path(query_details)
 end
 
 ---@param query_details QueryDetails
----@return string?
+---@return string
 function Values_file_path(query_details)
     local fallback = "__PG_QUERY_UTILS_ARGS_FALLBACK__"
     -- TODO: add fingerprint if we want it, so we can match against `query` and invalidate if `fingerprint` doesn't match
