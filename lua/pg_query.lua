@@ -1,5 +1,5 @@
 require("utils")
-require("local")
+require("temp_files")
 require("output")
 require("parse_from_vim")
 require("parse_from_pg_query")
@@ -14,7 +14,7 @@ function M.edit()
         return
     end
     local query_file_path = Query_file_path(details)
-    Write_query_details(query_file_path, details)
+    Write_query_details_no_params(query_file_path, details)
     local values_file_path = Values_file_path(details)
     print(values_file_path)
     M.buf = M.ui.open_edit_window({fields_align_right=M.fields_align_right, field_separator=M.field_separator, details=details, file_path=values_file_path})
@@ -32,8 +32,8 @@ function M.run()
         M.edit()
         return
     end
-    local param_values = Exists(values_file_path) and Parse_query_values(values_file_path, details) or {}
-    local replaced = Render_inplace_placeholders(query, param_values)
+    Parse_query_values(values_file_path, details)
+    local replaced = Render_inplace_placeholders(query, details.params)
     local command = "echo \"" .. replaced .. '"' .. " | " .. M.output_cmd
     Run_command(command)
 end

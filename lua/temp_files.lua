@@ -1,12 +1,9 @@
 require("utils")
 
-
 ---Save query details to the disk.
----If theres no params, only the query file will be saved.
----If there are params, the values will be written to the disk, with a file name per params_variant.
----If there's no params_variant, the 
+---Parameter values are not saved here, this is the file representing the query itself.
 ---@param query_details QueryDetails?
-local function save_query_details(file_path, query_details)
+local function save_query_details_no_params(file_path, query_details)
     if not query_details then
         return
     end
@@ -25,7 +22,6 @@ local function save_query_details(file_path, query_details)
         file:write(line .. "\n")
     end
     file:close()
-    print(file_path)
 end
 
 ---@param file_path string
@@ -44,30 +40,45 @@ local function Parse_query_file(file_path)
     return params
 end
 
----@param file_path string
----@param params QueryParam[]
----@return QueryParam[]
-function Parse_query_values(file_path, params)
-    local file = Open_or_error(file_path)
-    -- TODO: handle situations where order of values has changed 
-    -- TODO: then handle situations where values have been deleted or added.
-    local lines = file:lines()
-    for i, param in ipairs(params) do
-        param.value = lines[i]
+
+---@param query_details table @The query_details table to update.
+---@param index integer @The index of the param to update.
+---@param new_value any @The new value to set.
+local function update_query_param(query_details, index, new_value)
+    for _, param in ipairs(query_details.params) do
+        if tonumber(param.index) == tonumber(index) then
+            param.value = new_value
+            return true
+        end
     end
-    file:close()
-    return params
+    return false
 end
 
+---@param file_path string
+---@param details QueryDetails
+function Parse_query_values(file_path, details)
+    local file = Open_or_error(file_path)
+    local lines = file:lines()
+    local i = 1
+    for line in lines do
+        print(line)
+        if i <= #details.params then
+            print(update_query_param(details, i, line))
+        end
+        i = i + 1
+    end
+    file:close()
+    return true
+end
 
 ---@param file_path string?
 ---@param details QueryDetails?
 ---@return QueryDetails?
-function Write_query_details(file_path, details)
+function Write_query_details_no_params(file_path, details)
     if details == nil then
         print("No query found")
         return nil
     end
-    save_query_details(file_path, details)
+    save_query_details_no_params(file_path, details)
     return details
 end
