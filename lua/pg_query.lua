@@ -16,7 +16,6 @@ function M.edit()
     local query_file_path = Query_file_path(details)
     Write_query_details_no_params(query_file_path, details)
     local values_file_path = Values_file_path(details)
-    print(values_file_path)
     M.buf = M.ui.open_edit_window({fields_align_right=M.fields_align_right, field_separator=M.field_separator, details=details, file_path=values_file_path})
 end
 
@@ -28,7 +27,7 @@ function M.run()
         return
     end
     local values_file_path = Values_file_path(details)
-    if not values_file_path then
+    if not values_file_path or not Exists(values_file_path) then
         M.edit()
         return
     end

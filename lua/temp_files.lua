@@ -61,9 +61,11 @@ function Parse_query_values(file_path, details)
     local lines = file:lines()
     local i = 1
     for line in lines do
-        print(line)
         if i <= #details.params then
-            print(update_query_param(details, i, line))
+            local success = update_query_param(details, i, line)
+            if not success then
+                error("failed to update param " .. i .. " with line " .. line)
+            end
         end
         i = i + 1
     end
