@@ -1,9 +1,8 @@
 local M = {}
 
 ---@param file_path string @Path to the file to open or create.
----@param num_params number @Number of empty lines to add if the file doesn't exist.
----@param query_name string? @Query name for display purposes.
-local function floating_bufwin_from_path(file_path, num_params, query_name)
+---@param num_params integer @Number of empty lines to add if the file doesn't exist.
+local function create_buffer(file_path, num_params)
     local buf = vim.api.nvim_create_buf(true, false)
     if vim.fn.filereadable(file_path) == 1 then
         vim.api.nvim_buf_call(buf, function()
@@ -19,6 +18,14 @@ local function floating_bufwin_from_path(file_path, num_params, query_name)
             vim.cmd("silent! write " .. vim.fn.fnameescape(file_path))
         end)
     end
+    return buf
+end
+
+---@param file_path string @Path to the file to open or create.
+---@param num_params integer @Number of empty lines to add if the file doesn't exist.
+---@param query_name string? @Query name for display purposes.
+local function floating_bufwin_from_path(file_path, num_params, query_name)
+    local buf = create_buffer(file_path, num_params)
     local width = 80
     local height = vim.o.lines - 8
     local title = 'pg_query'
@@ -35,6 +42,12 @@ local function floating_bufwin_from_path(file_path, num_params, query_name)
         col = (vim.o.columns - width) / 2,
     }
     local win = vim.api.nvim_open_win(buf, true, opts)
+    return buf, win
+end
+
+---@param buf integer
+---@param win integer
+local function set_window_options(buf, win)
     vim.api.nvim_set_option_value('fillchars', 'eob: ', { win = win })
     vim.api.nvim_set_option_value('winhl', 'EndOfBuffer:None', { win = win })
     vim.api.nvim_set_option_value('wrap', true, { win = win })
@@ -49,7 +62,6 @@ local function floating_bufwin_from_path(file_path, num_params, query_name)
             end
         end,
     })
-    return buf, win
 end
 
 ---@param buf integer
@@ -76,21 +88,17 @@ end
 ---@class UIOpts
 ---@field fields_align_right boolean
 ---@field field_separator string
----@field query_details QueryDetails
+---@field details QueryDetails
 ---@field file_path string?
 
 ---@param opts UIOpts
-function M.edit_query_values(opts)
+function M.open_edit_window(opts)
     M.params = nil
-    M.params = opts.query_details.params
-    local buf, _ = floating_bufwin_from_path(opts.file_path, #opts.query_details.params or 0, opts.query_details.query)
+    M.params = opts.details.params
+    local buf, win = floating_bufwin_from_path(opts.file_path, #opts.details.params or 0, opts.details.query)
+    set_window_options(buf, win)
     render_field_names(buf, M.params, opts.fields_align_right, opts.field_separator)
     return buf
-end
-
----@param write_fn function 
-function M.handle_write(write_fn)
-    write_fn(M.query_file_name)
 end
 
 return M

@@ -17,7 +17,7 @@ function M.edit()
     Write_query_details(query_file_path, details)
     local values_file_path = Values_file_path(details)
     print(values_file_path)
-    M.buf = M.ui.edit_query_values({fields_align_right=M.fields_align_right, field_separator=M.field_separator, query_details=details, file_path=values_file_path})
+    M.buf = M.ui.open_edit_window({fields_align_right=M.fields_align_right, field_separator=M.field_separator, details=details, file_path=values_file_path})
 end
 
 function M.run()
