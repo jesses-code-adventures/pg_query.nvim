@@ -56,7 +56,7 @@ function M.run()
         return
     end
     local values_file_path = Values_file_path(details)
-    if not values_file_path or not Exists(values_file_path) then
+    if not Exists(values_file_path) then
         M.edit()
         return
     end
