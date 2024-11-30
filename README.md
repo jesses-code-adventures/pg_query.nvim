@@ -33,7 +33,7 @@ return {
         },
         -- these are the default values. if you're happy with them, you can just pass an empty table to opts.
         opts = {
-            output_cmd='pbcopy', -- when rendering your query with values (ie calling render()), the rendered sql command will be piped into this command line program.
+            output_mode='pbcopy', -- when rendering your query with values (ie calling render()), the rendered sql command will be piped into this command line program.
             -- we have db_cred_labels so you can pass as flags to psql, etc
             db_cred_labels={
                 db_name=nil, -- name of the environment variable pg_query should search for to get the `DB_NAME`.

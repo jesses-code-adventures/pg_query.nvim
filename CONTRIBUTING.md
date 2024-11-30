@@ -4,6 +4,12 @@ Contributions to this project are welcome! Please have a read through the [scope
 
 To get setup locally to make a contribution, follow the steps in [dev installation](#dev-installation).
 
+## Scope
+
+This repo is designed to interact with [pg_query_utils](https://github.com/timwmillard/pg_query_utils.git), and as such support for databases outside of postgres is currently out of scope.
+
+The problem we're aiming to solve is that of context switching between Neovim and your database query editor, so the feedback loop between editing queries and running them can be much faster. As such, adding support for `output-mode`s aside from `pbcopy` and `psql-tmux` would be considered in scope, provided the new mode is a reasonably common way to interact with databases.
+
 ## Todo
 
 - [x] Edit command - edit the values associated with a query.
