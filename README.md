@@ -2,6 +2,8 @@
 
 Neovim wrapper for [pg_query_utils](https://github.com/timwmillard/pg_query_utils.git).
 
+![initial usage jif](https://github.com/user-attachments/assets/3482472f-909f-44dd-83e0-549ba6496f60)
+
 ## Prerequisites
 
 Install [pg_query_utils](https://github.com/timwmillard/pg_query_utils.git) by running this script, then call `which pg_query_prepare` to make sure it was successful.
