@@ -1,6 +1,15 @@
 .PHONY: pre-reqs init
 
 BINARIES_DIR:="$$HOME/.local/bin"
+TEST_DIR := tests
+LUAJIT := luajit -O -joff
+
+test:
+	@set -e; \
+	for file in $(TEST_DIR)/*.lua; do \
+		echo "Running $$file..."; \
+		$(LUAJIT) $$file || exit 1; \
+	done
 
 pre-reqs:
 	@if ! command -v pg_query_prepare >/dev/null 2>&1; then \
@@ -25,6 +34,9 @@ check-bins: # List installed binaries
 
 clean: ## Remove pg query binaries
 	@$(MAKE) check-bins | xargs rm
+
+build-image: ## build the project in a docker image, with luajit and make.
+	docker build -t luajit-make .
 
 run-pg-query-prepare: ## Run scripts/testing.sql through pg_query_prepare --details
 	@cat scripts/testing.sql | pg_query_prepare -d

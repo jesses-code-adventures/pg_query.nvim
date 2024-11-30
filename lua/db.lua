@@ -36,5 +36,21 @@ end
 ---@param creds DbCreds
 ---@return string
 function Get_connection_string(creds)
-    return "postgresql://" .. creds.db_user .. ":" .. creds.db_password .. "@" .. creds.db_host .. ":" .. creds.db_port .. "/" .. creds.db_name
+    if not creds.db_user and not creds.db_host and not creds.db_password and not creds.db_port and not creds.db_name then
+        error("At least one of db_user, db_host, db_password, db_port and db_name must be passed to create a connection string.")
+    end
+    local user_pass = (creds.db_user or "") .. (creds.db_password ~= nil and ":" .. creds.db_password or "")
+    local host_port = (creds.db_host or "") .. (creds.db_port ~= nil and ":" .. creds.db_port or "")
+    if (host_port and host_port ~= "") and (user_pass and user_pass ~= "") then
+        user_pass = user_pass .. "@" .. host_port
+    end
+    if user_pass == nil or user_pass == "" then
+        if host_port ~= nil and host_port ~= "" then
+            user_pass = host_port
+        end
+    end
+    if creds.db_name and (user_pass == nil or user_pass == "") then
+        return creds.db_name
+    end
+    return "postgresql://" .. (user_pass or "") .. (creds.db_name ~= nil and "/" .. creds.db_name or "")
 end

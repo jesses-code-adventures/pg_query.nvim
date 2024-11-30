@@ -16,6 +16,7 @@ The problem we're aiming to solve is that of context switching between Neovim an
 - [x] Run command - get the query with the values inserted, and output to the `output-mode`. If there are no values to insert, open up the `edit` window.
 - [x] Output mode - formatted query to clipboard with `pbcopy`.
 - [x] Output mode - formatted query to psql, in a new tmux window.
+- [ ] Ability to edit the values in the `edit` window and run them from the buffer without saving, to make it easier to experiment with different values without overwriting.
 - [ ] Handle using the query `name` from the comment for the internal `query` field, instead of using the fingerprint. Waiting on this to be implemented in `pg_query_prepare --details`.
 - [ ] Config setting to error on missing db creds vs silently fail.
 - [ ] Ability to have variants for query arguments, which would be stored in their own temp files.
