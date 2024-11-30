@@ -7,11 +7,9 @@ require("db")
 
 ---@class OUTPUT_MODE
 ---@field PBCOPY "PBCOPY"
----@field PSQL "PSQL"
 ---@field PSQL_TMUX "PSQL_TMUX"
 local OUTPUT_MODE = {
     PBCOPY = "PBCOPY",
-    PSQL = "PSQL",
     PSQL_TMUX = "PSQL_TMUX",
 }
 
