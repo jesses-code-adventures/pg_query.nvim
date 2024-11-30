@@ -12,13 +12,16 @@ jobs:
   test:
     runs-on: ubuntu-latest
     container:
-      image: luajit-make
+      image: ubuntu:20.04
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Init
-        run: make init
+      - name: Install dependencies
+        run: |
+          apt-get update
+          apt-get install -y make luajit
 
       - name: Run tests
         run: make test
