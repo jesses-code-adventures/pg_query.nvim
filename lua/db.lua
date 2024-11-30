@@ -22,8 +22,13 @@ local function force_env_var(field, labels)
 end
 
 ---@param labels DbCredLabels
+---@param mode "PBCOPY"|"PSQL_TMUX"
 ---@return DbCreds
-function Get_db_creds(labels)
+function Get_db_creds(labels, mode)
+    -- TODO: use enum rather than literal.
+    if mode == "PBCOPY" then
+        return {}
+    end
     return {
         db_host = force_env_var("db_host", labels),
         db_name = force_env_var("db_name", labels),

@@ -96,7 +96,7 @@ function M.setup(opts)
     -- TODO: handle checking for prereqs based on output_mode
     M.ui = require("ui")
     M.ui_opts = opts.ui or {}
-    M.db_creds = Get_db_creds(opts.db_cred_labels or {})
+    M.db_creds = Get_db_creds(opts.db_cred_labels or {}, M.mode)
     if M.db_creds.db_password then
         vim.env.PGPASSWORD = M.db_creds.db_password
     end
