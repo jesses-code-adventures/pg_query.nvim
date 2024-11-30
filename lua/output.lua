@@ -1,3 +1,6 @@
+---Note that this functionality will be replaced by `pg_query_prepare` in the future.
+---Currently it exists here so we can test the rest of the program, but rendering args is not the responsibility of the nvim plugin.
+
 ---takes an sql query and a list of default params and replaces the query's placeholders with the values.
 ---@param query string
 ---@param params QueryParam[]
