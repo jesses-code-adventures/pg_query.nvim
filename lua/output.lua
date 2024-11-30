@@ -1,8 +1,13 @@
 ---takes an sql query and a list of default params and replaces the query's placeholders with the values.
 ---@param query string
 ---@param params QueryParam[]
+---@param skip_comment boolean
 ---@return string
-function Render_inplace_placeholders(query, params)
+function Render_inplace_placeholders(query, params, skip_comment)
+    if skip_comment then
+        query = query:gsub("^%s*--[^\n]*\n", "") -- Remove single-line comments
+        query = query:gsub("^%s*/%*.-%*/%s*", "") -- Remove block comments
+    end
     for _, param in ipairs(params) do
         if param.value == nil then
             error("expected a value for field \"" .. param.field .. "\" (argument index " .. param.index .. "), received nil.")
